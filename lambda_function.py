@@ -21,83 +21,56 @@ s3_adapter = S3Adapter(bucket_name=os.environ["S3_PERSISTENCE_BUCKET"])
 
 logger = logging.getLogger(__name__)
 
-bedroom = game.Bedroom()
-spaceship = game.SpaceShip()
-gameTimer = game.GameTimer()
-
-level_number = 0
+escape_room_game = None
 
 
 class LaunchRequestHandler(AbstractRequestHandler):
-    global bedroom
-    global spaceship
-    global gameTimer
-
     def can_handle(self, handler_input):
         return ask_utils.is_request_type("LaunchRequest")(handler_input)
 
     def handle(self, handler_input):
-        speak_output = ""
-        if gameTimer.elapsed == 0:
-            speak_output += bedroom.intro(beginning=True)
-            gameTimer.start_game_timer()
-        else:
-            speak_output += bedroom.intro(beginning=False)
-        ask_output = bedroom.MENU_ASK
+        global escape_room_game
 
-        level_number = game.load_game(handler_input, gameTimer, bedroom, spaceship)
+        escape_room_game = game.EscapeRoomGame(handler_input)
+        speak_output = escape_room_game.intro()
+        ask_output = escape_room_game.MENU_ASK
 
         return handler_input.response_builder.speak(speak_output).ask(ask_output).response
 
 
 class MenuIntentHandler(AbstractRequestHandler):
-    global bedroom
-    global spaceship
-    global level_number
-    global gameTimer
 
     def can_handle(self, handler_input):
-        level = game.get_level(level_number, bedroom, spaceship)
-        if ask_utils.is_intent_name("MenuIntent")(handler_input) and not level.game_playing:
-            return True
-        else:
-            return False
+        global escape_room_game
+
+        return ask_utils.is_intent_name("MenuIntent")(handler_input) and not escape_room_game.game_playing
 
     def handle(self, handler_input):
+        global escape_room_game
+
         slots = handler_input.request_envelope.request.intent.slots
         menu_selection = str(slots['menu'].value)
 
-        speak_output = ""
+        speak_output = escape_room_game.menu(menu_selection)
         ask_output = ""
-        level = game.get_level(level_number, bedroom, spaceship)
-
-        if gameTimer.elapsed == 0:
-            speak_output = level.menu(menu_selection=menu_selection, beginning=True)
+        if not escape_room_game.game_playing:
+            ask_output = escape_room_game.MENU_ASK
         else:
-            speak_output = level.menu(menu_selection=menu_selection, beginning=False)
-
-        if not level.game_playing:
-            ask_output = level.MENU_ASK
-        else:
-            ask_output = level.GAME_ASK
+            ask_output = escape_room_game.GAME_ASK
 
         return handler_input.response_builder.speak(speak_output).ask(ask_output).response
 
 
 class GameIntentHandler(AbstractRequestHandler):
-    global game
-    global spaceship
-    global level_number
-    global gameTimer
 
     def can_handle(self, handler_input):
-        level = game.get_level(level_number, bedroom, spaceship)
-        if ask_utils.is_intent_name("GameIntent")(handler_input) and level.game_playing:
-            return True
-        else:
-            return False
+        global escape_room_game
+
+        return ask_utils.is_intent_name("GameIntent")(handler_input) and escape_room_game.game_playing
 
     def handle(self, handler_input):
+        global escape_room_game
+
         slots = handler_input.request_envelope.request.intent.slots
         action = str(slots['action'].value)
         direction = str(slots['direction'].value)
@@ -106,22 +79,21 @@ class GameIntentHandler(AbstractRequestHandler):
         cancel = str(slots['cancel'].value)
         combo = str(slots['combo'].value)
 
-        level = game.get_level(level_number, bedroom, spaceship)
-        ask_output = ""
-        speak_output = level.room(action=action, direction=direction, objects=objects, items=items, cancel=cancel,
-                                  combo=combo)
-        if not level.looking_at_puzzle:
-            ask_output = level.GAME_ASK
+        ask_output = "What would you like to do?"
+        speak_output = escape_room_game.room(action=action, direction=direction, objects=objects, items=items,
+                                             cancel=cancel, combo=combo)
+        if not escape_room_game.looking_at_puzzle:
+            ask_output = escape_room_game.GAME_ASK
         else:
-            ask_output = level.COMBO_ASK
-        gameTimer.update_game_time()
-        if level.game_victory:
-            if level.tag == 0:
-                speak_output += "You finished in %s" % str(gameTimer.get_game_time())
-                level.reset()
-                level_number = 1
-            elif level.tag == 1:
-                return (handler_input.response_builder.speak(speak_output).response)
+            ask_output = escape_room_game.COMBO_ASK
+
+        if escape_room_game.game_victory:
+            escape_room_game.update_game_time()
+            speak_output += "<break time=\"1s\"/>"
+            speak_output += " Thanks for playing! " + escape_room_game.get_game_time()
+            speak_output += "</speak>"
+            escape_room_game.reset(handler_input)
+            return (handler_input.response_builder.speak(speak_output).response)
 
         return (handler_input.response_builder.speak(speak_output).ask(ask_output).response)
 
@@ -144,8 +116,6 @@ class HelpIntentHandler(AbstractRequestHandler):
 
 
 class CancelOrStopIntentHandler(AbstractRequestHandler):
-    global bedroom
-    global spaceship
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
@@ -164,19 +134,16 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
 
 
 class SessionEndedRequestHandler(AbstractRequestHandler):
-    global bedroom
-    global spaceship
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
-        return ask_utils.is_request_type("SessionEndedRequest")(handler_input)
+        return True
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-
-        # Any cleanup logic goes here.
+        global escape_room_game
 
         speak_output = "Goodbye!"
+        escape_room_game.exit(handler_input)
 
         return (
             handler_input.response_builder
