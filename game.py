@@ -11,9 +11,9 @@ class EscapeRoomGame:
                        "using that clever brain of yours. You can perform four actions. Look. Inspect. Use. " \
                        "And instructions. You can look. Up. Down. Left. Right. And forward. You can inspect any " \
                        "object that is in the room. Use any item in your inventory on an object in the " \
-                       "environment. To check what you have. Say inventory. For more time say wait. Say start to begin."
+                       "environment. To check what you have. Say inventory. For more time say wait. To exit the game say exit. Say start to begin."
     ACTION_HELP = "Sorry, you can not do that. You can look in a direction, inspect an object, use an item on " \
-                  "an object, check your inventory or say wait for more time."
+                  "an object, check your inventory, say wait for more time or say exit to leave the game."
     DIRECTION_HELP = "You can look. Up. Down. Left. Right. And forward."
     OBJECT_HELP = "Sorry, you do not see that object."
     HAS_ITEM_HELP = "Sorry, you do not have that item. Say inventory to check what you have."
@@ -133,7 +133,7 @@ class EscapeRoomGame:
     SPACESHIP_COMBO_FAILURE = "You enter the four digits and nothing happens."
     SPACESHIP_COMBINATION = "2013"
 
-    SPACESHIP_VICTORY = "You exit the room through the door and are again met with a bright light."
+    SPACESHIP_VICTORY = "You exit the room through the door and walk away to freedom."
 
     BEDROOM_LEVEL = 0
     SPACESHIP_LEVEL = 1
