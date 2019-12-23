@@ -104,8 +104,9 @@ class HelpIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-        speak_output = "You can say hello to me! How can I help?"
+        global escape_room_game
+
+        speak_output = escape_room_game.MENU_INSTRUCTION
 
         return (
             handler_input.response_builder
@@ -123,12 +124,21 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
                 ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input))
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-        speak_output = "Goodbye!"
+        global escape_room_game
+
+        speak_output = "Sorry, I had trouble doing what you asked."
+        ask_output = ""
+        if not escape_room_game.game_playing:
+            speak_output += escape_room_game.MENU_ASK
+            ask_output = escape_room_game.MENU_ASK
+        else:
+            speak_output += escape_room_game.GAME_ASK
+            ask_output = escape_room_game.GAME_ASK
 
         return (
             handler_input.response_builder
                 .speak(speak_output)
+                .ask(ask_output)
                 .response
         )
 
